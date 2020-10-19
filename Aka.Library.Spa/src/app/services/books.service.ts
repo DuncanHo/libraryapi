@@ -4,7 +4,7 @@ import { Book } from '../shared/book';
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { SignedOutBook } from '../shared/signed-out-book';
-import { map } from 'lodash';
+import { map } from 'rxjs/operators';
 import { GoogleBooksMetadata } from '../shared/google-books-metadata';
 import { Observable } from 'rxjs/internal/Observable';
 import { throwError } from 'rxjs/internal/observable/throwError';
@@ -67,8 +67,10 @@ export class BooksService {
    * @memberof BooksService
    */
   getNumberOfAvailableBookCopies(libraryId: number, bookId: number): Observable<number> {
-    // TODO: Add implementation
-    return throwError('Not Implemented');
+    const url = `${this.apiUrl}${libraryId}/books/available`;
+    return this.http.get<Book[]>(url)
+      .pipe(
+        map(items => {return items.filter(book => book.bookId == bookId).length;}));
   }
 
   checkOutBook(libraryId: number, bookId: number, memberId: number): Observable<SignedOutBook> {
@@ -91,11 +93,20 @@ export class BooksService {
    */
   getBookMetaData(isbn: string): Observable<GoogleBooksMetadata> {
     // TODO: Add implementation
-    const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${this.googleBooksAPIKey}`;
+    const url = `https://www.googleapis.com/books/v1/volumes?q=isbn13:${isbn}&key=${this.googleBooksAPIKey}`;
 
-    // return this.http.get(url);
-    return throwError('Funtion not implemented');
-
+    return this.http.get(url)
+    .pipe(
+      map(obj => {
+        let volumeInfo;
+        if (obj["items"].length > 0) {
+          volumeInfo = obj["items"][0]["volumeInfo"];
+          return {...<GoogleBooksMetadata>obj, authors: volumeInfo["authors"], description: volumeInfo["description"], imageLinks: volumeInfo["imageLinks"]}
+        } else {
+          return <GoogleBooksMetadata>obj;
+        }
+      })
+    );
   }
 
 }

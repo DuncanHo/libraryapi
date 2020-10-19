@@ -1,5 +1,5 @@
 import { BooksService } from '../../services/books.service';
-import { forkJoin, throwError, Subscription } from 'rxjs';
+import { forkJoin, throwError, Subscription, Observable } from 'rxjs';
 import { map, catchError, tap, take } from 'rxjs/operators';
 import { Book } from '../../shared/book';
 import { Component, OnInit, HostBinding } from '@angular/core';
@@ -23,7 +23,7 @@ export class BookDetailsComponent implements OnInit {
   @HostBinding('style.position') position = 'initial';
 
   bookSubscription: Subscription;
-  book: Book;
+  book$: Observable<Book>;
   numBooksSignedOut: number;
   numBooksAvailable: number;
   bookMetadata: GoogleBooksMetadata;
@@ -37,7 +37,7 @@ export class BookDetailsComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.route.paramMap
+    this.bookSubscription = this.route.paramMap
       .subscribe((params: ParamMap) => {
         const libraryId = +params.get('lid');
         const bookId = +params.get('id');
@@ -52,8 +52,7 @@ export class BookDetailsComponent implements OnInit {
    * @memberof BookDetailsComponent
    */
   isMaximumNumberOfBooksSignedOut(): boolean {
-    // TODO: Implement check
-    return false;
+    return this.numBooksSignedOut > 2 || this.numOfThisBookSignedOutByUser > 1;
   }
 
   checkOutBook() {
@@ -90,7 +89,7 @@ export class BookDetailsComponent implements OnInit {
    * @memberof BookDetailsComponent
    */
   getBookDetails(libraryId: number, bookId: number) {
-    forkJoin([
+    this.book$ = forkJoin([
       this.books.getBook(libraryId, bookId),
       this.books.getNumberOfAvailableBookCopies(libraryId, bookId),
       this.memberService.getSignedOutBooks(this.authService.currentMember)
